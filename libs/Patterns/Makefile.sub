@@ -1,0 +1,7 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/Error.cpp
+
+export PROJ_INC := $(PROJ_INC) \
+    $(THIS_PATH)/include

@@ -1,0 +1,15 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/TestEvent.cpp \
+    $(THIS_PATH)/src/TestMutex.cpp \
+    $(THIS_PATH)/src/TestMutexedVariable.cpp \
+    $(THIS_PATH)/src/TestSemaphore.cpp \
+    $(THIS_PATH)/src/TestQueue.cpp \
+    $(THIS_PATH)/src/TestTimer.cpp \
+    $(THIS_PATH)/src/TestTask.cpp \
+    $(THIS_PATH)/src/TestPeriodicTask.cpp \
+    $(THIS_PATH)/src/TestFunctionScopeTimer.cpp
+
+export PROJ_INC := $(PROJ_INC) \
+    $(THIS_PATH)/include

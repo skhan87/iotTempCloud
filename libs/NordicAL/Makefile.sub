@@ -1,0 +1,194 @@
+# @file Makefile.sub
+# @author Joshua Lauterbach (joshua@aconno.de)
+# @author Hrvoje Brezak (hrvoje@aconno.de)
+# 
+# @brief Makefile for Nordic Abstraction Layer library.
+# 
+# @details This makefile is used to append to compiler list all files and
+# 		libraries used by NordicAL library.
+# 		This library is meant to be included into projects as a submodule,
+# 		hence .sub suffix of this file.
+# @warning	After adding any new include or source files to the list below,
+# 		make sure to check if those files also require you to enable any
+# 		driver/library inside Nordics SDK configuration 
+# 		(look inside "./config/sdk_config.h" file).
+# 
+# @version 0.2
+# @date 2020-8-28
+# 
+# @copyright aconno GmbH (c) 2020
+# 
+
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/AL_Port.cpp \
+	$(THIS_PATH)/src/PatternsPort.cpp \
+    $(THIS_PATH)/src/PortUtility.cpp \
+	$(THIS_PATH)/modules/BLE/src/AconnoBeacon.cpp \
+	$(THIS_PATH)/modules/BLE/src/Advertiser.cpp \
+    $(THIS_PATH)/modules/BLE/src/AL_Advertisement.cpp \
+    $(THIS_PATH)/modules/BLE/src/AL_AdvertisementTimer.cpp \
+	$(THIS_PATH)/modules/BLE/src/AL_Device.cpp \
+    $(THIS_PATH)/modules/BLE/src/AL_IBeacon.cpp \
+    $(THIS_PATH)/modules/BLE/src/AL_Service.cpp \
+    $(THIS_PATH)/modules/BLE/src/BLE_Utility.cpp \
+    $(THIS_PATH)/modules/BLE/src/CharacteristicBase.cpp \
+	$(THIS_PATH)/modules/BLE/src/Scanner.cpp \
+    $(THIS_PATH)/modules/BLE/src/ParsedAdvData.cpp \
+	$(THIS_PATH)/modules/GPIO/src/AL_AnalogIn.cpp \
+    $(THIS_PATH)/modules/Flash/src/FlashUtility.cpp \
+    $(THIS_PATH)/modules/Flash/src/AL_FlashFile.cpp \
+    $(THIS_PATH)/modules/Flash/src/AL_FlashFileIterator.cpp \
+    $(THIS_PATH)/modules/Flash/src/AL_FlashFileRecordCollection.cpp \
+    $(THIS_PATH)/modules/GPIO/src/AL_DigitalIn.cpp \
+    $(THIS_PATH)/modules/GPIO/src/AL_DigitalOut.cpp \
+    $(THIS_PATH)/modules/GPIO/src/AL_InterruptIn.cpp \
+    $(THIS_PATH)/modules/GPIO/src/AL_PWM.cpp \
+	$(THIS_PATH)/modules/Logging/src/LoggerTask.cpp \
+	$(THIS_PATH)/modules/Updater/src/AL_DFU.cpp \
+	$(THIS_PATH)/modules/Updater/src/Updater.cpp \
+    $(THIS_PATH)/modules/Serial/I2C/src/AL_I2CBus.cpp
+
+export PROJ_INC := $(PROJ_INC)    \
+	$(THIS_PATH)/config \
+    $(THIS_PATH)/include \
+    $(THIS_PATH)/modules/BLE/include \
+	$(THIS_PATH)/modules/BLE/standardServices/include \
+    $(THIS_PATH)/modules/Flash/include \
+    $(THIS_PATH)/modules/GPIO/include \
+	$(THIS_PATH)/modules/Logging/include \
+	$(THIS_PATH)/modules/Updater/include \
+    $(THIS_PATH)/modules/Serial/I2C/include
+    
+
+# --------------------------------------------------------------------
+# Nordic SDK files needed
+# --------------------------------------------------------------------
+
+# Overwrite SDK_ROOT to ensure the proper sdk path is used
+export SDK_ROOT := $(THIS_PATH)/libs/nrf5_sdk_15.2.0
+export SDK_VERSION := nRF5_SDK_15.2.0
+
+export SOFTDEVICE_DIR := $(SDK_ROOT)/components/softdevice
+export CMSIS_CONFIG_TOOL := $(SDK_ROOT)/external_tools/cmsisconfig/CMSIS_Configuration_Wizard.jar
+export TEMPLATE_PATH := $(SDK_ROOT)/components/toolchain/gcc
+
+# hardfault_implementation.c and app_error_weak.c must not be included from here
+# Their implementation is overwritten in AL_Port.c
+export SRC_FILES := $(SRC_FILES) \
+	$(SDK_ROOT)/components/ble/common/ble_srv_common.c \
+	$(SDK_ROOT)/components/ble/nrf_ble_gatt/nrf_ble_gatt.c \
+    $(SDK_ROOT)/components/ble/ble_services/ble_bas/ble_bas.c \
+	$(SDK_ROOT)/components/ble/ble_services/ble_dfu/ble_dfu.c \
+  	$(SDK_ROOT)/components/ble/ble_services/ble_dfu/ble_dfu_bonded.c \
+  	$(SDK_ROOT)/components/ble/ble_services/ble_dfu/ble_dfu_unbonded.c \
+    $(SDK_ROOT)/components/libraries/crc16/crc16.c \
+	$(SDK_ROOT)/components/libraries/bootloader/dfu/nrf_dfu_svci.c \
+    $(SDK_ROOT)/components/libraries/fds/fds.c \
+    $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage.c \
+    $(SDK_ROOT)/components/libraries/fstorage/nrf_fstorage_sd.c \
+	$(SDK_ROOT)/components/libraries/hardfault/nrf52/handler/hardfault_handler_gcc.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_rtt.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_serial.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_backend_uart.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_default_backends.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_frontend.c \
+    $(SDK_ROOT)/components/libraries/log/src/nrf_log_str_formatter.c \
+	$(SDK_ROOT)/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c \
+	$(SDK_ROOT)/components/libraries/util/app_error.c \
+    $(SDK_ROOT)/components/libraries/util/app_error_handler_gcc.c \
+    $(SDK_ROOT)/components/libraries/util/app_util_platform.c \
+    $(SDK_ROOT)/components/libraries/atomic/nrf_atomic.c \
+	$(SDK_ROOT)/components/libraries/atomic_fifo/nrf_atfifo.c \
+    $(SDK_ROOT)/components/libraries/balloc/nrf_balloc.c \
+    $(SDK_ROOT)/components/libraries/memobj/nrf_memobj.c \
+    $(SDK_ROOT)/components/libraries/ringbuf/nrf_ringbuf.c \
+    $(SDK_ROOT)/components/libraries/experimental_section_vars/nrf_section_iter.c \
+    $(SDK_ROOT)/components/libraries/strerror/nrf_strerror.c \
+	$(SDK_ROOT)/components/libraries/timer/app_timer_freertos.c \
+    $(SDK_ROOT)/components/softdevice/common/nrf_sdh.c \
+    $(SDK_ROOT)/components/softdevice/common/nrf_sdh_ble.c \
+    $(SDK_ROOT)/components/softdevice/common/nrf_sdh_freertos.c \
+    $(SDK_ROOT)/components/softdevice/common/nrf_sdh_soc.c \
+    $(SDK_ROOT)/external/fprintf/nrf_fprintf.c \
+    $(SDK_ROOT)/external/fprintf/nrf_fprintf_format.c \
+    $(SDK_ROOT)/integration/nrfx/legacy/nrf_drv_clock.c \
+    $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_clock.c \
+  	$(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_saadc.c \
+    $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_twim.c \
+    $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_gpiote.c \
+    $(SDK_ROOT)/modules/nrfx/drivers/src/nrfx_pwm.c
+
+ifeq (,$(filter $(ENABLE_TRACE),APP APP_WITH_SD))
+# Include this code if ENABLE_TRACE is equal neither to APP or APP_WITH_SD
+# Enables SystemView modules to link in its own version of Seggerr RTT lib
+export SRC_FILES := $(SRC_FILES) \
+    $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT.c \
+    $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_Syscalls_GCC.c \
+    $(SDK_ROOT)/external/segger_rtt/SEGGER_RTT_printf.c
+endif
+
+export INC_FOLDERS := $(INC_FOLDERS) \
+    $(SDK_ROOT)/components \
+    $(SDK_ROOT)/components/ble/common \
+	$(SDK_ROOT)/components/ble/ble_services/ble_dfu \
+    $(SDK_ROOT)/components/ble/ble_services/ble_bas \
+	$(SDK_ROOT)/components/ble/peer_manager \
+	$(SDK_ROOT)/components/libraries/bootloader \
+	$(SDK_ROOT)/components/libraries/bootloader/dfu \
+	$(SDK_ROOT)/components/libraries/bootloader/ble_dfu \
+	$(SDK_ROOT)/components/libraries/pwr_mgmt \
+    $(SDK_ROOT)/components/ble/nrf_ble_gatt \
+	$(SDK_ROOT)/components/libraries/crc16 \
+    $(SDK_ROOT)/components/libraries/fds \
+    $(SDK_ROOT)/components/libraries/fstorage \
+	$(SDK_ROOT)/components/libraries/hardfault/nrf52 \
+  	$(SDK_ROOT)/components/libraries/hardfault \
+    $(SDK_ROOT)/components/libraries/log \
+    $(SDK_ROOT)/components/libraries/experimental_section_vars \
+    $(SDK_ROOT)/components/libraries/delay \
+    $(SDK_ROOT)/components/libraries/memobj \
+    $(SDK_ROOT)/components/libraries/atomic \
+    $(SDK_ROOT)/components/libraries/util \
+	$(SDK_ROOT)/components/libraries/mutex \
+    $(SDK_ROOT)/components/libraries/balloc \
+    $(SDK_ROOT)/components/libraries/strerror \
+	$(SDK_ROOT)/components/libraries/svc \
+	$(SDK_ROOT)/components/libraries/timer \
+    $(SDK_ROOT)/components/libraries/ringbuf \
+    $(SDK_ROOT)/components/libraries/atomic_fifo \
+    $(SDK_ROOT)/components/libraries/log/src \
+    $(SDK_ROOT)/components/softdevice/common \
+	$(SDK_ROOT)/components/softdevice/s132/headers \
+    $(SDK_ROOT)/components/toolchain/cmsis/include \
+    $(SDK_ROOT)/external/fprintf \
+    $(SDK_ROOT)/integration/nrfx \
+    $(SDK_ROOT)/integration/nrfx/legacy \
+    $(SDK_ROOT)/modules/nrfx \
+    $(SDK_ROOT)/modules/nrfx/drivers \
+    $(SDK_ROOT)/modules/nrfx/drivers/include \
+	$(SDK_ROOT)/modules/nrfx/hal \
+	$(SDK_ROOT)/modules/nrfx/mdk 
+
+# --------------------------------------------------------------------
+# FreeRTOS port files
+# --------------------------------------------------------------------
+ifeq (,$(filter $(ENABLE_TRACE),APP APP_WITH_SD))
+# Include this code if ENABLE_TRACE is equal neither to APP or APP_WITH_SD
+export SRC_FILES := $(SRC_FILES) \
+	$(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52/port_cmsis_systick.c \
+	$(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52/port_cmsis.c \
+	$(SDK_ROOT)/external/freertos/portable/GCC/nrf52/port.c
+
+export INC_FOLDERS := $(INC_FOLDERS) \
+    $(SDK_ROOT)/external/segger_rtt \
+    $(SDK_ROOT)/external/freertos/portable/CMSIS/nrf52 \
+  	$(SDK_ROOT)/external/freertos/portable/GCC/nrf52
+endif
+
+# Setup FPU to interrupt mode to allow for clearing its flags.
+# Allows to enter sleep mode properly.
+ifeq (__FPU_USED, 1)
+export COMMON_A_C_FLAGS := $(COMMON_A_C_FLAGS) -DFPU_INTERRUPT_MODE
+endif

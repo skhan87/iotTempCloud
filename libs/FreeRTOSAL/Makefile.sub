@@ -1,0 +1,44 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/AL_ITask.cpp \
+    $(THIS_PATH)/src/AL_Mutex.cpp \
+    $(THIS_PATH)/src/AL_RTOS.cpp  \
+    $(THIS_PATH)/src/AL_CountingSemaphore.cpp  \
+    $(THIS_PATH)/src/AL_Event.cpp  \
+    $(THIS_PATH)/src/AL_EventGroup.cpp  \
+    $(THIS_PATH)/src/AL_Timer.cpp  \
+    $(THIS_PATH)/src/FreeRTOSUtility.cpp \
+    $(THIS_PATH)/src/FunctionScopeTimer.cpp
+
+export PROJ_INC := $(PROJ_INC) \
+    $(THIS_PATH)/include \
+    $(THIS_PATH)/config
+
+# add freertos define macro
+# flags common to assembler, c, c++
+export COMMON_A_C_FLAGS := $(COMMON_A_C_FLAGS) -DFREERTOS
+
+# --------------------------------------------------------------------
+# FreeRTOS files needed
+# --------------------------------------------------------------------
+
+# If using SystemView, the SystemView submodule will link in modified files
+ifeq (,$(filter $(ENABLE_TRACE),APP APP_WITH_SD))
+# If ENABLE_TRACE equals either APP or APP_WITH_SD, disable this codeblock
+export SRC_FILES := $(SRC_FILES) \
+    $(THIS_PATH)/libs/freertos/Source/tasks.c
+endif
+
+export SRC_FILES := $(SRC_FILES) \
+    $(THIS_PATH)/libs/freertos/Source/croutine.c \
+    $(THIS_PATH)/libs/freertos/Source/event_groups.c \
+    $(THIS_PATH)/libs/freertos/Source/list.c \
+    $(THIS_PATH)/libs/freertos/Source/queue.c \
+    $(THIS_PATH)/libs/freertos/Source/stream_buffer.c \
+    $(THIS_PATH)/libs/freertos/Source/timers.c \
+    $(THIS_PATH)/libs/freertos/Source/portable/MemMang/heap_4.c
+
+export INC_FOLDERS := $(INC_FOLDERS) \
+    $(THIS_PATH)/libs/freertos/Source/include
+    

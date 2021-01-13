@@ -1,0 +1,378 @@
+# aconno common makefile.
+#
+# This makefile contains in one place all configuration options and 
+# compilation targets commonly used by all aconno hardware platforms.
+# Benefit of this is that any global changes are applied to all
+# hardware platforms simulataneously, minimizing possibility of potential
+# errors and omissions.
+#
+# Targets contained here are commonly used by many aconno hardware platforms.
+# Platform-specific targets are passed on to platform-specific makefiles,
+# which also define platform-specific variables used in making the targets.
+#
+#
+# aconno d.o.o.
+# Author: Hrvoje Brezak (hrvoje@aconno.de)
+#
+
+# Silently execute project prerequisites target upon every make invocation
+-include execute_prerequisites
+
+# --------------------------------------------------------------------
+# Define absolute project paths
+# --------------------------------------------------------------------
+
+ifeq ($(CUSTOM_OUTPUT_DIRECTORY),)
+export OUTPUT_DIRECTORY := $(PROJ_DIR)/build/_build
+else
+export OUTPUT_DIRECTORY := $(CUSTOM_OUTPUT_DIRECTORY)
+endif
+
+
+# --------------------------------------------------------------------
+# Process command line inputs
+# --------------------------------------------------------------------
+# Parse command line input.
+# Assume 1st argument passed is the main target, the rest are arguments 
+# to pass to the sub-makefiles.
+FIRST_ARG := $(firstword $(MAKECMDGOALS))
+ARGS := $(wordlist 2,$(words $(MAKECMDGOALS)),$(MAKECMDGOALS))
+
+# Define an empty variable to use in comparisons
+isEmpty := $(subst ,,)
+
+VALID_TARGETS := default all help clean erase nrf52832_release nrf52840_release nrf52832_debug nrf52840_debug nrf52832_test nrf52840_test submodules_list submodules_update sdk_config
+VALID_ARGS := upload generate_hex pack_OTA_update
+
+
+# --------------------------------------------------------------------
+# Perform sanity checks
+# --------------------------------------------------------------------
+# Enforce the presence of the GIT repository.
+# We depend on our submodules, so we have to prevent attempts to
+# compile without it being present.
+ifeq (../$(wildcard .git),)
+    $(error SANITY CHECK FAILED --- GIT REPOSITORY NOT DETECTED, OBLIGATORY SUBMODULES UNAVAILABLE. ABORTING.)
+endif
+
+# Command line input sanity checks
+ifneq ($(FIRST_ARG), $(isEmpty))                                     # If first argument is empty, then only command 'make' was used, which is valid; pass
+
+    ifeq ($(findstring $(FIRST_ARG), $(VALID_TARGETS)), $(isEmpty))  # If first argument is not empty, verify its validity against valid targets list
+        $(info Error - invalid target! Use 'make help' to get list of valid targets)
+    endif
+
+    ifneq ($(ARGS), $(isEmpty))                                      # If additional arguments are present, check their validity
+
+        ifeq ($(findstring $(ARGS), $(VALID_ARGS)), $(isEmpty))      # Check additional argument validity against valid arguments list
+            $(error Error - invalid target option! Use 'make help' to get list of valid target options)
+        endif
+        
+        ifeq ($(findstring $(words $(ARGS)), 0 1), $(isEmpty))       # Only a single additional argument is supported; abort if multiple are entered
+            $(error Invalid number of command line arguments!)
+        endif
+
+    endif
+
+endif
+
+# --------------------------------------------------------------------
+# Common optimization flags
+# --------------------------------------------------------------------
+# Execute this section before importing submodule makefiles to be able 
+# to set options which apply to submodule makefiles.
+
+# ENABLE_TRACE is for use as makefile variable ONLY. To avoid clashes with
+# similar compiler flags, more elaborate name is used for compiler flag.
+
+# make does not support OR operator, so magic has to be performed.
+# This code block shall be included by preprocessor only if ENABLE_TRACE is set
+# to APP or APP_WITH_SD value. 
+ifneq (,$(filter $(ENABLE_TRACE),APP APP_WITH_SD))
+	# Variable contains valid value
+$(info Trace analysis enabled and configured for $(ENABLE_TRACE))
+	OPT += -DENABLE_SYSVIEW_TRACE
+else
+	ifeq ($(ENABLE_TRACE),)
+		# Variable empty, tracing not used, all good.
+	else
+		# Variable is not empty, but value is invalid. Stop compilation.
+$(error Error: invalid command line argument value for ENABLE_TRACE! Use 'make help' to see valid values)
+	endif
+endif
+ifeq ($(ENABLE_TRACE), APP_WITH_SD)
+	OPT += -DTRACE_WITH_SD
+endif
+
+ifeq ($(FIRST_ARG), nrf52832_release)
+    # compile time optimazations
+    OPT += -O3 -DNDEBUG
+    # warnings as errors
+    COMMON_C_FLAGS += -Werror
+endif
+ifeq ($(FIRST_ARG), nrf52840_release)
+    # compile time optimazations
+    OPT += -O3 -DNDEBUG
+    # warnings as errors
+    COMMON_C_FLAGS += -Werror
+endif
+
+ifeq ($(FIRST_ARG), nrf52832_debug)
+    # debugging symbols and change to debug
+    OPT += -Og -g3 -DDEBUG
+endif
+ifeq ($(FIRST_ARG), nrf52840_debug)
+    # debugging symbols and change to debug
+    OPT += -Og -g3 -DDEBUG
+endif
+
+ifeq ($(FIRST_ARG), nrf52832_test)
+    # compile time optimazations
+    OPT += -O3 -DNDEBUG
+    # warnings as errors
+    COMMON_C_FLAGS += -Werror
+endif
+ifeq ($(FIRST_ARG), nrf52840_test)
+    # compile time optimazations
+    OPT += -O3 -DNDEBUG
+    # warnings as errors
+    COMMON_C_FLAGS += -Werror
+endif
+
+
+# --------------------------------------------------------------------
+# Include submodule makefiles
+# --------------------------------------------------------------------
+# Let submodules add themselfes to PROJ_SRC and PROJ_INC
+MAKEFILES := $(wildcard $(PROJ_DIR)/*/Makefile.sub) $(wildcard $(PROJ_DIR)/*/*/Makefile.sub) $(wildcard $(PROJ_DIR)/*/*/*/Makefile.sub)
+
+# --------------------------------------------------------------------
+# Include test makefiles
+# --------------------------------------------------------------------
+ifeq ($(FIRST_ARG), nrf52832_test)
+    MAKEFILES += $(wildcard $(PROJ_DIR)/*/Makefile.test) $(wildcard $(PROJ_DIR)/*/*/Makefile.test) $(wildcard $(PROJ_DIR)/*/*/*/Makefile.test)
+endif
+ifeq ($(FIRST_ARG), nrf52840_test)
+    MAKEFILES += $(wildcard $(PROJ_DIR)/*/Makefile.test) $(wildcard $(PROJ_DIR)/*/*/Makefile.test) $(wildcard $(PROJ_DIR)/*/*/*/Makefile.test)
+endif
+
+include $(MAKEFILES)
+
+# --------------------------------------------------------------------
+# Complete collection of sourcec files from libs and projects
+# --------------------------------------------------------------------
+# Source files
+export SRC_FILES += \
+    $(PROJ_SRC) \
+    $(PROJ_DIR)/build/src/newlibOverwrites.cpp
+
+# Include folders
+export INC_FOLDERS += \
+    $(PROJ_INC)
+
+# --------------------------------------------------------------------
+# Common compilation flags
+# --------------------------------------------------------------------
+# flags common to assembler, c, c++  and linker
+COMMON_FLAGS += $(OPT)
+# determine how float operations are generated
+COMMON_FLAGS += -mfloat-abi=hard
+# 16-bit more compact instruction set 
+COMMON_FLAGS += -mthumb
+COMMON_FLAGS += -mabi=aapcs
+# tells the compiler that there might not be any std libs and execution maight not start in main
+COMMON_FLAGS += -ffreestanding
+# refer to http://www.keil.com/support/man/docs/armclang_ref/armclang_ref_chr1422532346348.htm
+COMMON_FLAGS += -fno-common
+# inline really small functions
+COMMON_FLAGS += -finline-small-functions
+# more inlining, recursive function inlining and more
+COMMON_FLAGS += -findirect-inlining
+# stack protection against out of bounds access of arrays
+# this is done within newlib nano and will escalate into _exit(127) call
+COMMON_FLAGS += -fstack-protector-strong
+
+# flags common to assembler, c, c++
+COMMON_A_C_FLAGS += $(COMMON_FLAGS)
+COMMON_A_C_FLAGS += -DFLOAT_ABI_HARD
+ifeq ($(ENABLE_OTA_UPDATES), YES)
+    COMMON_A_C_FLAGS += -DENABLE_OTA_UPDATES 
+endif
+
+# flags only for c and c++
+COMMON_C_FLAGS += $(COMMON_A_C_FLAGS)
+# more restrictive code checks
+COMMON_C_FLAGS += -Wall
+# put data and functions in sections so linker can dump them when not used
+COMMON_C_FLAGS += -ffunction-sections
+COMMON_C_FLAGS += -fdata-sections
+COMMON_C_FLAGS += -fno-strict-aliasing
+# use more compact enums
+COMMON_C_FLAGS += -fshort-enums
+COMMON_C_FLAGS += -fno-builtin
+COMMON_C_FLAGS += -Wunknown-pragmas
+
+# C flags
+CFLAGS += $(PROJ_CFLAGS)
+CFLAGS += $(COMMON_C_FLAGS)
+
+# C++ flags
+CXXFLAGS += $(PROJ_CXXFLAGS)
+CXXFLAGS += $(COMMON_C_FLAGS)
+# no run time type information
+CXXFLAGS += -fno-rtti
+# no C++ exception support
+# if exceptions should be switched on --specs=nano.specs must be disabled.
+# this is the linker flag for nano newlib, which does not support exceptions.
+CXXFLAGS += -fno-exceptions
+# avoid teardown code (e.g. global destructors)
+#CXXFLAGS += -fno-use-cxa-atexit
+
+# Assembler flags common to all targets
+ASMFLAGS += $(PROJ_ASMFLAGS)
+ASMFLAGS += $(COMMON_A_C_FLAGS)
+
+# Linker flags common to all targets
+LDFLAGS += $(PROJ_LDFLAGS)
+LDFLAGS += $(COMMON_FLAGS)
+LDFLAGS += -L$(SDK_ROOT)/modules/nrfx/mdk
+# let linker dump unused sections
+LDFLAGS += -Wl,--gc-sections
+# use newlib in nano version. This results into all (even handled) exceptions hard-faulting.
+LDFLAGS += --specs=nano.specs
+
+
+# --------------------------------------------------------------------
+# Common libraries
+# --------------------------------------------------------------------
+LIB_FILES += $(PROJ_LIB_FILES)
+LIB_FILES += -lc -lnosys -lm -lstdc++
+
+# Export variables needed by platform-specific makefiles
+export CFLAGS CXXFLAGS ASMFLAGS LDFLAGS LIB_FILES
+
+# --------------------------------------------------------------------
+# Command-line targets
+# --------------------------------------------------------------------
+# NOTE: all command-line targets shall set ".prerequisites" phony target as their first dependency.
+
+# All targets here are phony as none create files - they either do work or delegate work to sub-make
+.PHONY: .default .all help clean erase nrf52832_release nrf52840_release submodules_list submodules_update
+.PHONY: .execute_prerequisites sdk_config
+
+.default: all
+.all: help
+
+help: .prerequisites
+	@echo
+	@echo ====================================================
+	@echo $(PROJECT_NAME) firmware.
+	@echo ====================================================
+	@echo
+	@echo Following hardware targets are available:
+	@echo "  nrf52832_release    --- compile firmware for nrf52832 platform"
+	@echo "  nrf52840_release    --- compile firmware for nrf52840 platform"
+	@echo "  nrf52832_debug      --- compile firmware for nrf52832 platform with debugging flags"
+	@echo "  nrf52840_debug      --- compile firmware for nrf52840 platform with debugging flags"
+	@echo "  nrf52832_test       --- compile firmware for nrf52832 platform with tests and release flags"
+	@echo "  nrf52840_test       --- compile firmware for nrf52840 platform with tests and release flags"
+	@echo
+	@echo Following auxiliary targets are available:
+	@echo "  submodules_list    --- list all project submodules"
+	@echo "  submodules_update  --- set submodules to commits expected by the project"
+	@echo "  clean              --- clean up project binaries"
+	@echo "  erase              --- erase hardware plaform memory"
+	@echo "  sdk_config         --- start graphical tool for editing Nordic SDK configuration"
+	@echo
+	@echo Following hardware target options are available:
+	@echo "  .. upload          --- flash compiled firmware binary to the board"
+	@echo "                     --- use this command to flash firmware using Jlink programmer"
+	@echo
+	@echo "  .. generate_hex    --- generates hex file ready for upload to the platform"
+	@echo "                     --- use this command to generate file to be used with acnPROG programmer"
+	@echo
+	@echo
+	@echo To select hardware target option, concatenate it with hardware target name, i.e. \'make nrf52832_release upload\'
+	@echo will compile nrf52832 firmware and attempt to flash it to the connected hardware platform.
+	@echo
+	@echo For further instructions to testing, please refer to the Patterns library Readme.
+	@echo
+
+clean: .prerequisites
+	@echo Cleaning up
+	@echo ===========
+	rm -rf $(PROJ_DIR)/build/_build
+
+erase: .prerequisites
+	nrfjprog -f nrf52 --eraseall
+
+nrf52832: .prerequisites
+ifeq ($(filter $(ARGS),$(PLATFORM_SPECIFIC_PHONY)),$(isEmpty)) # trigger compilation
+	@echo Compiling firmware
+	@echo ==================
+	$(MAKE) nrf52832_xxaa $(ARGS) PRETTY=1 -C $(PROJ_DIR)/build/pca10040/s132
+else
+	$(MAKE) $(ARGS) -C $(PROJ_DIR)/build/pca10040/s132
+endif
+
+nrf52840: .prerequisites
+ifeq ($(filter $(ARGS),$(PLATFORM_SPECIFIC_PHONY)),$(isEmpty)) # trigger compilation
+	@echo Compiling firmware
+	@echo ==================
+	$(MAKE) nrf52840_xxaa $(ARGS) PRETTY=1 -C $(PROJ_DIR)/build/pca10056/s140
+else
+	$(MAKE) $(ARGS) -C $(PROJ_DIR)/build/pca10056/s140
+endif
+
+nrf52832_release: nrf52832
+
+nrf52840_release: nrf52840
+
+nrf52832_debug: nrf52832
+
+nrf52840_debug: nrf52840
+
+nrf52832_test: nrf52832
+
+nrf52840_test: nrf52840
+
+sdk_config: .prerequisites
+	java -jar $(CMSIS_CONFIG_TOOL) $(PROJ_DIR)/libs/NordicAL/config/sdk_config.h
+	@echo Project SDK configurator exited successfully!
+
+# Set project prerequisites.
+# All targets runnable from command line shall add this as their first dependency.
+# List of prerequisite actions:
+#  - copy clang-format file to project root directory
+.prerequisites: 
+	@\cp $(PROJ_DIR)/build/tools/.clang-format $(PROJ_DIR)
+
+submodules_list: .prerequisites
+	@echo Submodule makefiles list
+	@echo ========================
+	@$(foreach mf, $(MAKEFILES), echo "$(mf)")
+	@echo
+
+submodules_update: submodules_list
+	@echo Updating project submodules
+	@echo ===========================
+	@git submodule update --quiet --init --recursive || true
+	@git submodule sync --recursive
+	@git submodule update --init --recursive
+	@echo Done.
+
+
+#### Common makefile footer #######################################################
+# Targets below serve to supress unnecessary and confusing terminal output produced
+# by makefile due to make's quirks. No need to edit this.
+%:
+
+upload: 
+	@echo Done.
+
+generate_hex: 
+	@echo Done.
+
+pack_OTA_update:
+	@echo Done.
+###################################################################################

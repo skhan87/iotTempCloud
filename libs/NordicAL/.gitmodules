@@ -1,0 +1,4 @@
+[submodule "libs/nrf5_sdk_15.2.0"]
+	path = libs/nrf5_sdk_15.2.0
+	url = https://git.simvelop.de/aconnoProducts/utilities/nrf5_sdk_15.2.0.git
+	branch = develop

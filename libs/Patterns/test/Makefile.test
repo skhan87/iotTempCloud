@@ -1,0 +1,11 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/TestBase.cpp \
+    $(THIS_PATH)/src/TestLifetimeList.cpp \
+    $(THIS_PATH)/src/TestEndians.cpp \
+    $(THIS_PATH)/src/TestBitfield.cpp \
+    $(THIS_PATH)/src/TestScopeExit.cpp
+
+export PROJ_INC := $(PROJ_INC) \
+    $(THIS_PATH)/include

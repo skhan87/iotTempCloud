@@ -1,0 +1,110 @@
+clinaris contact tracking project
+
+1. advertising
+--------------
+  1.1. the beacon fw starts advertising after power-up or reset, with default parameters; 408 ms. interval and 3 burst-count.
+  1.2. advertisement-interval can be changed at run-time by configuration service. (see gateway)
+  1.3. the interval of advertising is automatically updated to 5 seconds if the beacon is in power-saving mode. (see periphery/accelerometer)
+  1.4. the beacon advertisement packet consists of:
+    + tx-power, tranmission power
+    + contact-count, the number of detected beacons with an rssi value greater than a threshold. this threshold can be adjusted by configuration service (see gateway)
+    + group-id, by default beacons aren't assigned a group-id, they use 0 (zero) as group-id. the beacons can be assigned a group-id by the configuration service. (see gateway)
+    + product-id, which is hardcoded: {0x43, 0x6C, 0x69, 0x01}
+  1.5. the updated tx-power, contact-count and group-id fields are to be appeared in an advertisement on the next update-cycle which has an interval of 60 seconds.
+
+2. scanning
+-----------
+  2.1. the beacon fw starts scanning after power-up or reset.
+  2.2. the default scanning duration is 430 ms. which can be changed at runtime by configuration service. (see gateway)
+  2.3. the default scanning interval is 10 sec. which can be changed at runtime by configuration service. (see gateway)
+  2.4. the scanner uses a product-id filter to detect the beacons (see 1.4.product-id)
+  2.5. the detected beacons are filtered again, if the scanning beacon is assigned a group-id, which is not 0 (see 1.4.group-id)
+  2.6. the rssi values of final detected beacons are compared with an rssi-threshold, which can be adjusted by the configuration service (see gateway)
+  2.7. the detected beacons with sufficient rssi values are interpretted as contacts and added to a ring-buffer in order to be written to flash data storage asynchronously (see logging)
+
+3. logging
+----------
+  3.1. the contact are logged into the flash (see 2.7.)
+  3.2. the logged contact data consists of:
+    + timestamp (see gateway)
+	  + mac address
+	  + rssi value
+  3.3. the flash can store a maximum of 14000 contact logs. if the gateway doesn't copy the logs in a necessary time, the oldest log will be replaced with the newest one.
+  3.4. the logs kept in the flash are read using the data service (see gateway)
+  3.5. the read logs are acknowledged by the gateway with a checksum and then deleted if the checksum matches.
+
+4. periphery
+------------
+  4.1. the beacon has the following peripheral devices:
+    + leds, 3 leds with the colors; red, green and blue
+	  + buzzer, controlled with pwm
+	  + accelerometer
+  4.2. the beacon fw executes a test function after power-up or reset. it makes leds on and off one by one and buzzer beep for a half second.
+  4.3. by default all leds, buzzer and motor are enabled but they can be disabled/enabled by the configuration service (see gateway)
+  4.4. the red led is blinked 2 times to indicate a contact detected (see 2.7.)
+  4.5. the buzzer beeps sychronously with the blinking of the red led if a specific number of contacts are detected in a defined time-window. by default the beep is triggered if 3 contacts are detected in 50 seconds.
+  4.6. the accelerometer is used to detect a motion, which uses a default threshold value of 10.6 m/s^2. this threshold can be adjusted by the configuration service (see gateway)
+  4.7. the beacon fw goes to power-saving mode if there is no motion detected in 30 seconds. this duration can be changed by the configuration service (see gateway)
+  4.8. the blue-led is blinked 3 times to indicate that the fw goes into the power-saving mode.
+  4.9. the green-led is set on for 2 seconds to indicate that the fw goes into active mode.
+  4.10.in the power-saving mode, the fw stops scannning and uses a 5 sec. interval for advertising.
+
+5. gateway
+----------
+  5.1. the gateway software continuously scans for BLE devices using the Linux bluez stack and filters out advertisements that do not contain the Clinaris product-id (see 1.4).
+  5.2. for each detected Clinaris beacon, the gateway performs these operations:
+  5.2.1. The beacon is connected to and its characteristics detected by bluez. This happens on first detection and every RECONNECT_INTERVAL (default 60s).
+  5.2.2. When CONNECT_INTERVAL seconds (default 2s) have passed since the connection (so bluez has time to collect the characteristics), the following characteristics are read:
+         + uptime (service0014/char0023, uint32): the RTC based timestamp in seconds since boot of the beacon.
+           This time is used to transform the timestamp in the log samples into an absolute timestamp.
+         + battery measurement (/service0014/char0029, uint8): the AtoD measurement of the battery voltage.
+         + request/commit (/service000e/char000f, uint32_t): writing a checksum into this characteristic confirms
+           that the data packet read using the next characteristic has been received correctly
+           and new data should be notified if available.
+         + data (/service000e/char0011, uint8 * 440): current data message, containing up to 40 indiviual log samples.
+           Empty samples will consist of 11 zero bytes and shall be ignored.
+           This is a notification characteristic, so the gateway has to set a listener on the bluez PropertiesChanged
+           signal through with it will receive the data. Bluez requires the register to be read once before it activates
+           this mechanism and this read will not yield any data on its own.
+           Reception of data is confirmed using the request/commit characteristic. The checksum is the sum of all the
+           bytes in the message read using the data characteristic.
+         + advertisement interval (/service0014/char0015, uint16): interval in milliseconds in between advertisements (see 1.1.)
+         + scan duration (/service0014/char0017, uint16): duration in milliseconds for how long to scan (2.2)
+         + scan interval (/service0014/char0019, uint16): interval between scans (see 2.3)
+         + periphery control (/service0014/char001b, uint16): bitfield enabling/disabling periphery devices
+         + group id (/service0014/char001d, uint16): group id this beacon belongs to (see 2.5)
+         + tx power (/service0014/char001f, int8): transmit power the advertisement will use (see 1.4)
+         + rx threshhold (/service0014/char0021, int8): rssi over which a contact shall be logged (see 2.6)
+         + accelerometer threshhold (/service0014/char0025, float): threshhold above which the accelerometer
+           generates an interrupt, waking up the beacon (default 10.6).
+         * accelerometer sleep timeout (/service0014/char0027, uint32): interval until the beacon goes to sleep without
+           an interrupt from the accelerometer (default 30000ms).
+  5.2.3. For the data characteristic, the gateway sets up the notification and triggers reading the data.
+         Each sample received is reported to the cloud REST service.
+  5.2.4. For the configuration characteristics, the gateway consults a sqlite3 database refering to the beacon mac.
+         If the database contains a row with this mac, the configuration values are read from this database and
+         differring values are sent to the beacon, overwriting the configuration there.
+  5.2.5. A beacon that was receiving data is disconnected when no data has been received for TIMEOUT_DATA (10s).
+  5.2.6. A beacon that was not receiving data is disconnected after TIMEOUT_CONNECT (30s).
+  5.2.7. A beacon is disconnected when its error count reaches 9. An error is a failed read/write of a characteristic
+         or a repeated log sample that is not empty.
+  5.2.8. A beacon entry is expunged after no advertisements have been received from it for EXPUNGE_INTERVAL (10min).
+
+6. Configuration Database
+  6.1. The gateway stores configuration values for each beacon (identified by the beacon MAC address):
+       + advertisement_interval_ms: time between advertisements in milliseconds, default 408
+       + scan_interval_ms: duration of one scan in milliseconds. During this time interval the receiver of beacon can receive announcements. Default is 430.
+       + idle_interval_ms: time between scans in milliseconds, default is 10s.
+       + tx_power_db: transmission power for the advertisements in decibel. Only certain values are allowed: -40, -20, -16, -12, -8, -4, 0, 3, 4, 8, default is 8.
+       + rx_threshold_db: signal strength that the receiving beacon has to receive for a contact to be registered.
+                          Beacons right beside each other are at -50 to -60. Default is -100, values > -200 are meaningless.
+       + group_id: group this beacon belongs to.
+       + periphery_control: bitflag 1: red led, 2: green led, 4: blue led, 8: buzzer, 16: accelerometer
+       + acc_threshold_g: acceleration value that triggers a wakeup by shaking. 9.8 would always trigger (not advised), 10.6 slight touch of the table registers,
+                          14: rough shake is required.
+       + acc_sleep_timeout_ms: interval during which the accelerometer will have to not register any movement for the beacon to fall asleep.
+                               When the beacon is asleep, no more contacts are logged (no scanning happens) and the advertisement interval is 5 seconds, not 408 ms.
+                               Connection to the gateway during this mode are sporadic, but it is possible to change settings on the beacon if enough time
+                               is given for these settings to be transmitted to the beacon (several minutes).
+
+

@@ -1,0 +1,41 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+# make does not support OR operator, so magic has to be performed.
+# This code block shall be included by preprocessor only if ENABLE_TRACE is set
+# to APP or APP_WITH_SD value. 
+ifneq (,$(filter $(ENABLE_TRACE),APP APP_WITH_SD)) 
+    export PROJ_SRC := $(PROJ_SRC) \
+        $(THIS_PATH)/src/SystemView.cpp \
+        $(THIS_PATH)/config/SEGGER_SYSVIEW_Config_FreeRTOS.c \
+        $(THIS_PATH)/libs/OS/SEGGER_SYSVIEW_FreeRTOS.c \
+        $(THIS_PATH)/libs/OS/Patch/patched/tasks.c \
+        $(THIS_PATH)/libs/OS/Patch/patched/port_cmsis_systick.c \
+        $(THIS_PATH)/libs/SEGGER/SEGGER_RTT_printf.c \
+        $(THIS_PATH)/libs/SEGGER/SEGGER_RTT_Syscalls_GCC.c \
+        $(THIS_PATH)/libs/SEGGER/SEGGER_RTT_ASM_ARMv7M.S \
+        
+    export PROJ_INC := $(PROJ_INC) \
+        $(THIS_PATH)/config \
+        $(THIS_PATH)/include \
+        $(THIS_PATH)/libs/OS \
+        $(THIS_PATH)/libs/SEGGER \
+        $(THIS_PATH)/libs/OS/Patch/patched
+endif
+
+ifeq ($(ENABLE_TRACE), APP)
+    export PROJ_SRC := $(PROJ_SRC) \
+        $(THIS_PATH)/libs/SEGGER/SEGGER_RTT.c \
+        $(THIS_PATH)/libs/SEGGER/SEGGER_SYSVIEW.c
+
+endif
+
+ifeq ($(ENABLE_TRACE), APP_WITH_SD)
+    export PROJ_SRC := $(PROJ_SRC) \
+        $(THIS_PATH)/libs/Softdevice/sysview_softdevice.c
+
+    export PROJ_INC := $(PROJ_INC) \
+        $(THIS_PATH)/libs/Softdevice
+
+    export PROJ_LIB_FILES := $(PROJ_LIB_FILES) \
+        $(THIS_PATH)/libs/Softdevice/SysviewSoftdevice_S132V2.a
+endif

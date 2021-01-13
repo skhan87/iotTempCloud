@@ -1,0 +1,11 @@
+THIS_PATH := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
+
+export PROJ_SRC := $(PROJ_SRC) \
+    $(THIS_PATH)/src/TestExecuter.cpp \
+    $(THIS_PATH)/src/FlashRecordTest.cpp \
+    $(THIS_PATH)/src/CharacteristicsTest.cpp \
+	$(THIS_PATH)/src/ServiceTest.cpp \
+    $(THIS_PATH)/src/FlashCollectionTest.cpp
+
+export PROJ_INC := $(PROJ_INC) \
+    $(THIS_PATH)/include
