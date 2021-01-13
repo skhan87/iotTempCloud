@@ -1,16 +1,11 @@
-# Firmware for acnBEACON
+# Firmware for iot temperature project with aconno Devkit
 
-This is the firmware repository for an aconno Beacon.
+This is the firmware repository for an aconno Devkit  
 
 It is the base for every new project.
 Therefor it is the most up to date repository, since most submodules are developed in here.
 
 ## Features
-
-The acnBeacon itself has only a few features:
-*  initial advertisement: Eddystone Advertisement with (ACONNO_ID(0x69), 0xFF, 0x00) as manufacturer data. Gets send 3 times when controller restarted
-*  acnBeacon advertisement as described here: https://github.com/aconno/Sensorics/blob/master/docs/advertisement-deserialization.md, deserializers can be found here: https://aconno.de/sensorics/formats/
-*  iBeacon advertisement: major: 0x1234, minor: 0x5678, UUID: [0x00, 0x11..0xFF]
 
 ## Working with aconno firmware
 
@@ -24,7 +19,7 @@ To get started with aconno firmware, here is a collection of links:
 
 To clone this repo install git and type:
 ```cmd
-git clone --recurse-submodules -b develop https://git.simvelop.de/aconnoProducts/acnBEACON/acnBEACONFW.git
+git clone --recurse-submodules -b develop https://github.com/skhan87/iotTempCloud.git
 ```
 
 This will automatically download all the repositories you need.
